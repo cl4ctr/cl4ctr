@@ -37,10 +37,7 @@ def get_model(
         mlp_layers=(400, 400, 400)):
     if name == "fm":
         return FactorizationMachineModel(field_dims, embed_dim)
-    elif name == "fmfrnet":
-        return FMFRNet(field_dims, embed_dim, num_layers=1, weight_type="bit", att_size=20, mlp_layer=256)
-    elif name == "fmfrnet_vec":
-        return FMFRNet(field_dims, embed_dim, num_layers=1, weight_type="vector", att_size=20, mlp_layer=256)
+
     else:
         raise ValueError('unknown model name: ' + name)
 
