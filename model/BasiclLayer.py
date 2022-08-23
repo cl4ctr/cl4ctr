@@ -1,35 +1,176 @@
-
-import torch
-import torch.nn as nn
-import torch.nn.functional as F
 import numpy as np
+from .data_aug import *
+
 
 class BasicCTR(nn.Module):
-    """
-    A simple common-used class for CTR models.
-    """
-    def __init__(self,field_dims, embed_dim):
-        """
-        :param field_dims: list
-        :param embed_dim:
-        """
+    def __init__(self, field_dims, embed_dim):
         super(BasicCTR, self).__init__()
-        # linear part. most models need to use linear part.
         self.lr = FeaturesLinear(field_dims)
-        # All CTR prediction models need to use embedding layer
         self.embedding = FeaturesEmbedding(field_dims, embed_dim)
 
     def forward(self, x):
-        """
-        :param x:  B,F,E
-        :return:
-        """
         raise NotImplemented
+
+
+class BasicCL4CTR(nn.Module):
+    def __init__(self, field_dims, embed_dim, batch_size=1024, pratio=0.5, fi_type="att"):
+        super(BasicCL4CTR, self).__init__()
+        # 1、embedding layer
+        self.embedding = FeaturesEmbedding(field_dims, embed_dim)
+        self.field_dims = field_dims
+        self.num_field = len(field_dims)
+        self.input_dim = self.num_field * embed_dim
+        self.batch_size = batch_size
+        self.row, self.col = list(), list()
+        for i in range(batch_size - 1):
+            for j in range(i + 1, batch_size):
+                self.row.append(i), self.col.append(j)
+
+        # 2.1 Random mask.
+        self.pratio = pratio
+        self.dp1 = nn.Dropout(p=pratio)
+        self.dp2 = nn.Dropout(p=pratio)
+
+        # 2.2 FI_encoder. In most cases, we utilize three layer transformer layers.
+        self.encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=1, dim_feedforward=128,
+                                                        dropout=0.2)
+        self.fi_cl = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
+
+        # 2.3 Projection
+        self.projector1 = nn.Linear(self.input_dim, embed_dim)
+        self.projector2 = nn.Linear(self.input_dim, embed_dim)
+
+    def forward(self, x):
+        raise NotImplemented
+
+    def compute_cl_loss(self, x, alpha=1.0, beta=0.01):
+        """
+        :param x: embedding
+        :param alpha:
+        :param beta: beta = gamma
+        :return: L_cl * alpha + (L_ali+L_uni) * beta
+
+        # This is a simplified computation based only on the embedding of each batch,
+        # which can accelerate the training process.
+        """
+        x_emb = self.embedding(x)
+
+        # 1. Compute feature alignment loss (L_ali) and feature uniformity loss (L_uni).
+        # This is a simplified computation based only on the embedding of each batch,
+        # which can accelerate the training process.
+        cl_align_loss = self.compute_alignment_loss(x_emb)
+        cl_uniform_loss = self.compute_uniformity_loss(x_emb)
+        if alpha == 0.0:
+            return (cl_align_loss + cl_uniform_loss) * beta
+
+        # 2. Compute contrastive loss.
+
+        x_emb1, x_emb2 = self.dp1(x_emb), self.dp2(x_emb)
+        x_h1 = self.fi_cl(x_emb1).view(-1, self.input_dim)
+        x_h2 = self.fi_cl(x_emb2).view(-1, self.input_dim)
+
+        x_h1 = self.projector1(x_h1)
+        x_h2 = self.projector2(x_h2)
+
+        cl_loss = torch.norm(x_h1.sub(x_h2), dim=1).pow_(2).mean()
+
+        # 3. Combine L_cl and (L_ali + L_uni) with two loss weights (alpha and beta)
+        loss = cl_loss * alpha + (cl_align_loss + cl_uniform_loss) * beta
+        return loss
+
+    def compute_cl_loss_all(self, x, alpha=1.0, beta=0.01):
+        """
+        :param x: embedding
+        :param alpha:
+        :param beta: beta
+        :return: L_cl * alpha + (L_ali+L_uni) * beta
+
+        This is the full version of Cl4CTR, which computes L_ali and L_uni with full feature representations.
+        """
+        x_emb = self.embedding(x)
+
+        # 1. Compute feature alignment loss (L_ali) and feature uniformity loss (L_uni).
+        cl_align_loss = self.compute_all_alignment_loss()
+        cl_uniform_loss = self.compute_all_uniformity_loss()
+        if alpha == 0.0:
+            return (cl_align_loss + cl_uniform_loss) * beta
+
+        # 2. Compute contrastive loss (L_cl).
+        x_emb1, x_emb2 = self.dp1(x_emb), self.dp2(x_emb)
+        x_h1 = self.fi_cl(x_emb1).view(-1, self.input_dim)
+        x_h2 = self.fi_cl(x_emb2).view(-1, self.input_dim)
+
+        x_h1 = self.projector1(x_h1)
+        x_h2 = self.projector2(x_h2)
+
+        cl_loss = torch.norm(x_h1.sub(x_h2), dim=1).pow_(2).mean()
+
+        # 3. Combine L_cl and (L_ali + L_uni) with two loss weights (alpha and beta)
+        loss = cl_loss * alpha + (cl_align_loss + cl_uniform_loss) * beta
+        return loss
+
+    def compute_alignment_loss(self, x_emb):
+        alignment_loss = torch.norm(x_emb[self.row].sub(x_emb[self.col]), dim=2).pow(2).mean()
+        return alignment_loss
+
+    def compute_uniformity_loss(self, x_emb):
+        frac = torch.matmul(x_emb, x_emb.transpose(2, 1))  # B,F,F
+        denom = torch.matmul(torch.norm(x_emb, dim=2).unsqueeze(2), torch.norm(x_emb, dim=2).unsqueeze(1))  # 64，30,30
+        res = torch.div(frac, denom + 1e-4)
+        uniformity_loss = res.mean()
+        return uniformity_loss
+
+    def compute_all_uniformity_loss(self):
+        """
+            Calculate field uniformity loss based on all feature representation.
+        """
+        embedds = self.embedding.embedding.weight
+        field_dims = self.field_dims
+        field_dims_cum = np.array((0, *np.cumsum(field_dims)))
+        field_len = embedds.size()[0]
+        field_index = np.array(range(field_len))
+        uniformity_loss = 0.0
+        #     for i in
+        pairs = 0
+        for i, (start, end) in enumerate(zip(field_dims_cum[:-1], field_dims_cum[1:])):
+            index_f = np.logical_and(field_index >= start, field_index < end)  # 前闭后开
+            embed_f = embedds[index_f, :]
+            embed_not_f = embedds[~index_f, :]
+            frac = torch.matmul(embed_f, embed_not_f.transpose(1, 0))  # f1,f2
+            denom = torch.matmul(torch.norm(embed_f, dim=1).unsqueeze(1),
+                                 torch.norm(embed_not_f, dim=1).unsqueeze(0))  # f1,f2
+            res = torch.div(frac, denom + 1e-4)
+            uniformity_loss += res.sum()
+            pairs += (field_len - field_dims[i]) * field_dims[i]
+        uniformity_loss /= pairs
+        return uniformity_loss
+
+    def compute_all_alignment_loss(self):
+        """
+        Calculate feature alignment loss based on all feature representation.
+        """
+        embedds = self.embedding.embedding.weight
+        field_dims = self.field_dims
+        field_dims_cum = np.array((0, *np.cumsum(field_dims)))
+        alignment_loss = 0.0
+        pairs = 0
+        for i, (start, end) in enumerate(zip(field_dims_cum[:-1], field_dims_cum[1:])):
+            embed_f = embedds[start:end, :]
+            loss_f = 0.0
+            for j in range(field_dims[i]):
+                loss_f += torch.norm(embed_f[j, :].sub(embed_f), dim=1).pow(2).sum()
+            pairs += field_dims[i] * field_dims[i]
+            alignment_loss += loss_f
+
+        alignment_loss /= pairs
+        return alignment_loss
+
 
 class FeaturesLinear(torch.nn.Module):
     """
     Linear regression layer for CTR prediction.
     """
+
     def __init__(self, field_dims, output_dim=1):
         super().__init__()
         self.fc = torch.nn.Embedding(sum(field_dims), output_dim)
@@ -57,10 +198,8 @@ class FactorizationMachine(torch.nn.Module):
         """
         square_of_sum = torch.sum(x, dim=1) ** 2  # B，embed_dim
         sum_of_square = torch.sum(x ** 2, dim=1)  # B，embed_dim
-        # square of sum - sum of square
         ix = square_of_sum - sum_of_square  # B,embed_dim
         if self.reduce_sum:
-            # For NFM, reduce_sum = False
             ix = torch.sum(ix, dim=1, keepdim=True)
         return 0.5 * ix
 
@@ -89,6 +228,7 @@ class FeaturesEmbedding(torch.nn.Module):
         x = x + x.new_tensor(self.offsets).unsqueeze(0)
         return self.embedding(x)
 
+
 class MultiLayerPerceptron(torch.nn.Module):
     def __init__(self, input_dim, embed_dims, dropout=0.5, output_layer=False):
         super().__init__()
@@ -106,71 +246,9 @@ class MultiLayerPerceptron(torch.nn.Module):
         self._init_weight_()
 
     def _init_weight_(self):
-        """ We leave the weights initialization here. """
         for m in self.mlp:
             if isinstance(m, nn.Linear):
                 nn.init.xavier_uniform_(m.weight)
 
     def forward(self, x):
-        """
-        :param x: Float tensor of size ``(batch_size,num_fields*embed_dim)``
-        """
         return self.mlp(x)
-
-class InnerProductNetwork(torch.nn.Module):
-
-    def __init__(self,num_fields,is_sum=True):
-        super(InnerProductNetwork, self).__init__()
-        self.is_sum = is_sum
-        self.num_fields = num_fields
-        self.row, self.col = list(), list()
-
-        for i in range(self.num_fields - 1):
-            for j in range(i + 1, self.num_fields):
-                self.row.append(i), self.col.append(j)
-
-    def forward(self, x):
-        if self.is_sum == True:
-            return torch.sum(x[:, self.row] * x[:, self.col], dim=2)  # B,1/2* nf*(nf-1)
-        else:
-            return x[:, self.row] * x[:, self.col]
-
-class OuterProductNetwork(torch.nn.Module):
-    def __init__(self, num_fields, embed_dim, kernel_type='num'):
-        super().__init__()
-
-        num_ix = num_fields * (num_fields - 1) // 2
-        if kernel_type == 'mat':
-            kernel_shape = embed_dim, num_ix, embed_dim
-        elif kernel_type == 'vec':
-            kernel_shape = num_ix, embed_dim
-        elif kernel_type == 'num':
-            kernel_shape = num_ix, 1
-        else:
-            raise ValueError('unknown kernel type: ' + kernel_type)
-        self.kernel_type = kernel_type
-
-        self.kernel = torch.nn.Parameter(torch.zeros(kernel_shape))
-
-        num_field = num_fields
-        self.row, self.col = list(), list()
-        for i in range(num_field - 1):
-            for j in range(i + 1, num_field):
-                self.row.append(i), self.col.append(j)
-        torch.nn.init.xavier_uniform_(self.kernel.data)
-
-
-    def forward(self, x):
-        """
-        :param x: Float tensor of size ``(batch_size, num_fields, embed_dim)``
-        """
-        p, q = x[:, self.row], x[:, self.col]  # B,n,emb
-
-        if self.kernel_type == 'mat':
-            #  p [b,1,num_ix,e]
-            #  kernel [e, num_ix, e]
-            kp = torch.sum(p.unsqueeze(1) * self.kernel,dim=-1).permute(0,2,1)  #b,num_ix,e
-            # #b,num_ix,e
-            return torch.sum(kp * q, -1)
-        else:
-            return torch.sum(p * q * self.kernel.unsqueeze(0), -1)
