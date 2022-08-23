@@ -1,3 +1,4 @@
+import torch.nn as nn
 import numpy as np
 from .data_aug import *
 
