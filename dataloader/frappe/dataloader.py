@@ -1,11 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-'''
-@Author:wangfy
-@project:DL_recommend
-@Time:2020/4/29 9:42 上午
-'''
-
 import numpy as np
 import pandas as pd
 import torch
@@ -15,7 +7,6 @@ import pickle
 
 
 class LoadData():
-    # 加载数据,
     def __init__(self, path="./data/", dataset="frappe"):
         self.dataset = dataset
         self.path = path + dataset + "/"
@@ -31,7 +22,6 @@ class LoadData():
         self.data_train = pd.read_table(self.trainfile, sep=" ", header=None, engine='python')
         self.data_test = pd.read_table(self.testfile, sep=" ", header=None, engine="python")
         self.data_valid = pd.read_table(self.validationfile, sep=" ", header=None, engine="python")
-        #       第一列是标签，y
 
         for i in self.data_test.columns[1:]:
             self.data_test[i] = self.data_test[i].apply(lambda x: int(x.split(":")[0]))
@@ -42,8 +32,6 @@ class LoadData():
         self.field_dims = []
 
         for i in self.all_data.columns[1:]:
-            # if self.dataset != "frappe":
-                # maps = {}
             maps = {val: k for k, val in enumerate(set(self.all_data[i]))}
             self.data_test[i] = self.data_test[i].map(maps)
             self.data_train[i] = self.data_train[i].map(maps)

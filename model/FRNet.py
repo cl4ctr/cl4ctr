@@ -9,17 +9,7 @@ import math
 os.environ["KMP_DUPLICATE_LIB_OK"]="TRUE"
 
 class FRNet(nn.Module):
-    """
-    Feature refinement network：
-    (1) IEU
-    (2) CSGate
-    """
     def __init__(self, field_length, embed_dim, weight_type="bit", num_layers=1, att_size=10, mlp_layer=256):
-        """
-        :param field_length: field_length
-        :param embed_dim: embedding dimension
-        type: bit or vector
-        """
         super(FRNet, self).__init__()
         # IEU_G computes complementary features.
         self.IEU_G = IEU(field_length, embed_dim, weight_type="bit",
@@ -38,21 +28,8 @@ class FRNet(nn.Module):
 
 
 class IEU(nn.Module):
-    """
-    Information extraction Unit (IEU) for FRNet
-    (1) Self-attention
-    (2) DNN
-    """
     def __init__(self, field_length, embed_dim, weight_type="bit",
                  bit_layers=1, att_size=10, mlp_layer=256):
-        """
-        :param field_length:
-        :param embed_dim:
-        :param type: vector or bit
-        :param bit_layers:
-        :param att_size:
-        :param mlp_layer:
-        """
         super(IEU,self).__init__()
         self.input_dim = field_length * embed_dim
         self.weight_type = weight_type
@@ -70,11 +47,6 @@ class IEU(nn.Module):
 
 
     def forward(self,x_emb):
-        """
-        :param x_emb: B,F,E
-        :return: B,F,E (bit-level weights or complementary fetures)
-                 or B,F,1 (vector-level weights)
-        """
 
         # （1）self-attetnion unit
         x_vector = self.vector_info(x_emb)  # B,F,E

@@ -1,6 +1,3 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
-
 import sys
 from torch.optim.lr_scheduler import ReduceLROnPlateau
 from torchsummary import summary

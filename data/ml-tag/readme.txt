@@ -1,6 +1,5 @@
 [17045, 23743, 49657] sum()=90445
-90445
-afm
+
 We convert each tag application
 (user ID, movie ID and tag) to a feature vector and
 obtain 90445 features.

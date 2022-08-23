@@ -1,5 +1,4 @@
-#!/usr/bin/env python
-# -*- coding:utf-8 -*-
+
 import torch
 import torch.nn as nn
 import torch.nn.functional as F
@@ -56,7 +55,6 @@ class FactorizationMachine(torch.nn.Module):
         """
         :param x: B,F,E
         """
-        # 因为x都是1，所以不需要乘以x: 和的平方 - 平方的和
         square_of_sum = torch.sum(x, dim=1) ** 2  # B，embed_dim
         sum_of_square = torch.sum(x ** 2, dim=1)  # B，embed_dim
         # square of sum - sum of square
@@ -104,7 +102,6 @@ class MultiLayerPerceptron(torch.nn.Module):
 
         if output_layer:
             layers.append(torch.nn.Linear(input_dim, 1))
-        # 使用 *，
         self.mlp = torch.nn.Sequential(*layers)
         self._init_weight_()
 
@@ -134,10 +131,8 @@ class InnerProductNetwork(torch.nn.Module):
 
     def forward(self, x):
         if self.is_sum == True:
-            # 默认求和最原始的方式
             return torch.sum(x[:, self.row] * x[:, self.col], dim=2)  # B,1/2* nf*(nf-1)
         else:
-            #  以下： 如果不求和 B,1/2* nf*(nf-1), K
             return x[:, self.row] * x[:, self.col]
 
 class OuterProductNetwork(torch.nn.Module):
