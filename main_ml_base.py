@@ -1,12 +1,3 @@
-import math
-import sys
-from torch.optim.lr_scheduler import ReduceLROnPlateau
-from torchsummary import summary
-
-import tqdm
-import time
-
-import torch
 import torch.nn as nn
 import torch.nn.functional as F
 from torch.optim.lr_scheduler import ReduceLROnPlateau
@@ -16,6 +7,11 @@ from model.DeepFM import DeepFM, DeepFM_CL4CTR
 
 import numpy as np
 import random
+import sys
+import tqdm
+import time
+import argparse
+import torch
 
 import os
 
@@ -45,6 +41,7 @@ def get_model(
                              fi_type="att")
     else:
         raise ValueError('unknown model name: ' + name)
+
 
 def count_params(model):
     params = sum(param.numel() for param in model.parameters())
@@ -116,7 +113,6 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
     field_dims, trainLoader, validLoader, testLoader = \
         getdataloader_ml(path=path, batch_size=batch_size)
     print(field_dims)
-    # raise ValueError
     time_fix = time.strftime("%m%d%H%M%S", time.localtime())
     for K in [embed_dim]:
         paths = os.path.join(save_dir, dataset_name, model_name, str(K))
@@ -125,9 +121,9 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
         with open(paths + f"/{model_name}_{K}_{batch_size}_{alpha}_{beta}_{pratio}_{time_fix}.p",
                   "a+") as fout:
             fout.write("Batch_size:{}\tembed_dim:{}\tlearning_rate:{}\tStartTime:{}\tweight_decay:{}\tpratio:{}\t"
-                       "\talpha:{}\tbeta:{}\tgamma:{}\n"
+                       "\talpha:{}\tbeta:{}\t\n"
                        .format(batch_size, K, learning_rate, time.strftime("%d%H%M%S", time.localtime()), weight_decay,
-                               pratio, alpha, beta, beta))
+                               pratio, alpha, beta))
             print("Start train -- K : {}".format(K))
 
             criterion = torch.nn.BCELoss()
@@ -147,33 +143,25 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
                 lr=learning_rate,
                 weight_decay=weight_decay)
 
-            # scheduler = ReduceLROnPlateau(optimizer, 'max', verbose=True, patience=6)
-
             # Initial EarlyStopping
             early_stopping = EarlyStopping(patience=8, verbose=True, prefix=path)
-
+            scheduler = ReduceLROnPlateau(optimizer, 'max', verbose=True, patience=4)
             val_auc_best = 0
             auc_index_record = ""
 
             val_loss_best = 1000
             loss_index_record = ""
 
-            # scheduler = ReduceLROnPlateau(optimizer, 'min', verbose=True, patience=4)
-            scheduler = ReduceLROnPlateau(optimizer, 'max', verbose=True, patience=4)
             for epoch_i in range(epoch):
                 print(__file__, model_name, K, epoch_i, "/", epoch)
                 print("Batch_size:{}\tembed_dim:{}\tlearning_rate:{}\tStartTime:{}\tweight_decay:{}\tpratio:{}\t"
-                      "\talpha:{}\tbeta:{}\tgamma:{}"
+                      "\talpha:{}\tbeta:{}\t"
                       .format(batch_size, K, learning_rate, time.strftime("%d%H%M%S", time.localtime()), weight_decay,
-                              pratio, alpha, beta, beta))
+                              pratio, alpha, beta))
                 start = time.time()
 
                 train_loss = train(model, optimizer, trainLoader, criterion, alpha=alpha, beta=beta)
-
-                # valid
                 val_auc, val_loss = test_roc(model, validLoader)
-
-                # test
                 test_auc, test_loss = test_roc(model, testLoader)
 
                 scheduler.step(val_auc)
@@ -212,9 +200,6 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
 
             fout.write("auc_best:\t{}\nloss_best:\t{}".format(auc_index_record, loss_index_record))
 
-            # torch.save({"state_dict": model.state_dict()}, paths+f"/{model_name}_{K}_{time_fix}.pt")
-            # torch.save({"state_dict":model.state_dict(),"best_auc":val_auc_best}, paths + f"/{model_name}_final_{K}_{time_fix}.pt")
-
 
 def setup_seed(seed):
     torch.manual_seed(seed)
@@ -224,19 +209,16 @@ def setup_seed(seed):
     torch.backends.cudnn.deterministic = True
 
 
-# 设置随机数种子
-
 if __name__ == '__main__':
 
     # CUDA_VISIBLE_DEVICES=1 python main_ml_base.py --choice  0
-    import argparse
 
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', default='ml_tag', help="")
     parser.add_argument('--save_dir', default='chkpt_ml_tag', help="")
     parser.add_argument('--path', default="../data/", help="")
     parser.add_argument('--model_name', default='fm', help="")
-    parser.add_argument('--epoch', type=int, default=100, help="")
+    parser.add_argument('--epoch', type=int, default=5, help="")
     parser.add_argument('--learning_rate', type=float, default=0.001, help="learning rate")
     parser.add_argument('--batch_size', type=int, default=1024, help="batch_size")
     parser.add_argument('--weight_decay', type=float, default=1e-6, help="")
