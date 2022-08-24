@@ -56,7 +56,7 @@ class RecData():
         y1 = self.data_df.iloc[idx].values[0]
         return x, y1
 
-def getdataloader_frappe(path="../.././data/",dataset="frappe",num_ng=4, batch_size=256):
+def getdataloader_frappe(path="../data/", dataset="frappe", num_ng=4, batch_size=256):
     print("Load frappe dataset.")
     DataF = LoadData(path=path, dataset=dataset)
 

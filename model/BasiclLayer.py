@@ -113,7 +113,6 @@ class BasicCL4CTR(nn.Module):
         return loss
 
     def compute_alignment_loss(self, x_emb):
-        # print(x_emb.size())
         alignment_loss = torch.norm(x_emb[self.row].sub(x_emb[self.col]), dim=2).pow(2).mean()
         return alignment_loss
 
@@ -220,7 +219,6 @@ class FeaturesEmbedding(torch.nn.Module):
         self._init_weight_()
 
     def _init_weight_(self):
-        """ weights initialization"""
         nn.init.normal_(self.embedding.weight, std=0.01)
         # nn.init.xavier_normal_nn.init.xavier_normal_(self.embedding.weight)
 
