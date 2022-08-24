@@ -14,6 +14,11 @@ class BasicCTR(nn.Module):
 
 
 class BasicCL4CTR(nn.Module):
+    """
+    The core implement of CL4CTR, in which three SSL losses(L_cl, L_ali and L_uni) are computed to regularize
+    feature representation.
+    """
+
     def __init__(self, field_dims, embed_dim, batch_size=1024, pratio=0.5, fi_type="att"):
         super(BasicCL4CTR, self).__init__()
         # 1、embedding layer

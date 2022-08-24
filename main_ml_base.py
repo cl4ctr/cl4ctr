@@ -176,10 +176,7 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
                 test_auc, test_loss = test_roc(model, testLoader)
 
                 scheduler.step(val_auc)
-                # scheduler.step(val_loss)
-                # auc, test_mse = test_roc(model, testLoader)
                 end = time.time()
-                # if val_auc > val_auc_best:
                 if val_loss < val_loss_best:
                     # torch.save({"state_dict": model.state_dict(), "best_auc": val_auc_best},
                     #            paths + f"/{model_name}_final_{K}_{time_fix}.pt")
