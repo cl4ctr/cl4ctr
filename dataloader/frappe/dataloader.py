@@ -5,7 +5,6 @@ import os
 import tqdm
 import pickle
 
-
 class LoadData():
     def __init__(self, path="./data/", dataset="frappe"):
         self.dataset = dataset
@@ -64,34 +63,38 @@ def getdataloader_frappe(path="../.././data/",dataset="frappe",num_ng=4, batch_s
     datatest = RecData(DataF.data_test)
     datatrain = RecData(DataF.data_train)
     datavalid = RecData(DataF.data_valid)
-    print("datatrain",len(datatrain))
-    print("datavalid",len(datavalid))
-    print("datatest",len(datatest))
-    trainLoader = torch.utils.data.DataLoader(datatrain, batch_size=batch_size, shuffle=True, num_workers=8,pin_memory=True)
-    validLoader = torch.utils.data.DataLoader(datavalid, batch_size=batch_size, shuffle=False, num_workers=4,pin_memory=True)
-    testLoader = torch.utils.data.DataLoader(datatest, batch_size=batch_size, shuffle=False, num_workers=4,pin_memory=True)
-    return DataF.field_dims,trainLoader,validLoader,testLoader
+    print("datatrain", len(datatrain))
+    print("datavalid", len(datavalid))
+    print("datatest", len(datatest))
+    trainLoader = torch.utils.data.DataLoader(datatrain, batch_size=batch_size, shuffle=True, drop_last=True,
+                                              num_workers=8, pin_memory=True)
+    validLoader = torch.utils.data.DataLoader(datavalid, batch_size=batch_size, shuffle=False, drop_last=True,
+                                              num_workers=4, pin_memory=True)
+    testLoader = torch.utils.data.DataLoader(datatest, batch_size=batch_size, shuffle=False, num_workers=4,
+                                             pin_memory=True)
+    return DataF.field_dims, trainLoader, validLoader, testLoader
 
 def getdataloader_ml(path="../.././data/", dataset="ml-tag",num_ng=4, batch_size=256):
-
     path_ml = path + 'preprocess-ml.p'
     if not os.path.exists(path_ml):
         DataF = LoadData(path=path, dataset=dataset)
-        # save data save time
-        pickle.dump((DataF.data_test,DataF.data_train,DataF.data_valid,DataF.field_dims), open(path_ml, 'wb'))
+        pickle.dump((DataF.data_test, DataF.data_train, DataF.data_valid, DataF.field_dims), open(path_ml, 'wb'))
         print("success")
     print("start load ml_tag data")
-    data_test,data_train,data_valid, field_dims = pickle.load(open(path_ml, mode='rb'))
+    data_test, data_train, data_valid, field_dims = pickle.load(open(path_ml, mode='rb'))
     datatest = RecData(data_test)
     datatrain = RecData(data_train)
     datavalid = RecData(data_valid)
-    print("ml-datatrain",len(datatrain))
-    print("ml-datavalid",len(datavalid))
-    print("ml-datatest",len(datatest))
-    trainLoader = torch.utils.data.DataLoader(datatrain, batch_size=batch_size, shuffle=True, num_workers=8,pin_memory=True)
-    validLoader = torch.utils.data.DataLoader(datavalid, batch_size=batch_size, shuffle=False, num_workers=4,pin_memory=True)
-    testLoader = torch.utils.data.DataLoader(datatest, batch_size=batch_size, shuffle=False, num_workers=4,pin_memory=True)
-    return field_dims,trainLoader,validLoader,testLoader
+    print("ml-datatrain", len(datatrain))
+    print("ml-datavalid", len(datavalid))
+    print("ml-datatest", len(datatest))
+    trainLoader = torch.utils.data.DataLoader(datatrain, batch_size=batch_size, shuffle=True, drop_last=True,
+                                              num_workers=8, pin_memory=True)
+    validLoader = torch.utils.data.DataLoader(datavalid, batch_size=batch_size, shuffle=False, drop_last=True,
+                                              num_workers=4, pin_memory=True)
+    testLoader = torch.utils.data.DataLoader(datatest, batch_size=batch_size, shuffle=False, num_workers=4,
+                                             pin_memory=True)
+    return field_dims, trainLoader, validLoader, testLoader
 
 if __name__ == '__main__':
     field_dims,trainLoader,validLoader,testLoader = getdataloader_ml(batch_size=256)

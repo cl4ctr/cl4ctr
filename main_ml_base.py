@@ -111,11 +111,12 @@ def test_roc(model, data_loader):
 
 def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
          batch_size, weight_decay, save_dir, path,
-         emb_projector, pratio, alpha, beta):
-    path = "../data/ml-1m/"
+         pratio, alpha, beta):
+    path = "./data/"
     field_dims, trainLoader, validLoader, testLoader = \
         getdataloader_ml(path=path, batch_size=batch_size)
-
+    print(field_dims)
+    # raise ValueError
     time_fix = time.strftime("%m%d%H%M%S", time.localtime())
     for K in [embed_dim]:
         paths = os.path.join(save_dir, dataset_name, model_name, str(K))
@@ -124,9 +125,9 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
         with open(paths + f"/{model_name}_{K}_{batch_size}_{alpha}_{beta}_{pratio}_{time_fix}.p",
                   "a+") as fout:
             fout.write("Batch_size:{}\tembed_dim:{}\tlearning_rate:{}\tStartTime:{}\tweight_decay:{}\tpratio:{}\t"
-                       "emb_projector:{}\talpha:{}\tbeta:{}\tgamma:{}\n"
+                       "\talpha:{}\tbeta:{}\tgamma:{}\n"
                        .format(batch_size, K, learning_rate, time.strftime("%d%H%M%S", time.localtime()), weight_decay,
-                               pratio, emb_projector, alpha, beta, beta))
+                               pratio, alpha, beta, beta))
             print("Start train -- K : {}".format(K))
 
             criterion = torch.nn.BCELoss()
@@ -162,9 +163,9 @@ def main(dataset_name, model_name, epoch, embed_dim, learning_rate,
             for epoch_i in range(epoch):
                 print(__file__, model_name, K, epoch_i, "/", epoch)
                 print("Batch_size:{}\tembed_dim:{}\tlearning_rate:{}\tStartTime:{}\tweight_decay:{}\tpratio:{}\t"
-                      "emb_projector:{}\talpha:{}\tbeta:{}\tgamma:{}"
+                      "\talpha:{}\tbeta:{}\tgamma:{}"
                       .format(batch_size, K, learning_rate, time.strftime("%d%H%M%S", time.localtime()), weight_decay,
-                              pratio, emb_projector, alpha, beta, beta))
+                              pratio, alpha, beta, beta))
                 start = time.time()
 
                 train_loss = train(model, optimizer, trainLoader, criterion, alpha=alpha, beta=beta)
@@ -233,7 +234,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('--dataset_name', default='ml_tag', help="")
     parser.add_argument('--save_dir', default='chkpt_ml_tag', help="")
-    parser.add_argument('--path', default="../data/frappe", help="")
+    parser.add_argument('--path', default="../data/", help="")
     parser.add_argument('--model_name', default='fm', help="")
     parser.add_argument('--epoch', type=int, default=100, help="")
     parser.add_argument('--learning_rate', type=float, default=0.001, help="learning rate")
@@ -242,17 +243,17 @@ if __name__ == '__main__':
     parser.add_argument('--device', default='cuda:0', help="cuda:0")
     parser.add_argument('--choice', default=0, type=int, help="choice")
     parser.add_argument('--hint', default="CL4CTR", help="")
-    parser.add_argument('--embed_dim', default=64, type=int, help="the size of feature dimension")
+    parser.add_argument('--embed_dim', default=5, type=int, help="the size of feature dimension")
     parser.add_argument('--pratio', default=0.5, type=float, help="pratio")
     parser.add_argument('--alpha', default=1e-0, type=float, help="alpha")
-    parser.add_argument('--beta', default=1e-3, type=float, help="beta")
+    parser.add_argument('--beta', default=1e-2, type=float, help="beta")
     args = parser.parse_args()
 
     if args.choice == 0:
-        model_names = ["fm_cl4ctr"] * 10
+        model_names = ["fm_cl4ctr"] * 1
 
     elif args.choice == 1:
-        model_names = ["fm_cl4ctr"] * 10
+        model_names = ["dfm_cl4ctr"] * 1
 
     print(model_names)
 

@@ -6,7 +6,6 @@ from .data_aug import *
 class BasicCTR(nn.Module):
     def __init__(self, field_dims, embed_dim):
         super(BasicCTR, self).__init__()
-        self.lr = FeaturesLinear(field_dims)
         self.embedding = FeaturesEmbedding(field_dims, embed_dim)
 
     def forward(self, x):
@@ -27,6 +26,7 @@ class BasicCL4CTR(nn.Module):
         self.num_field = len(field_dims)
         self.input_dim = self.num_field * embed_dim
         self.batch_size = batch_size
+
         self.row, self.col = list(), list()
         for i in range(batch_size - 1):
             for j in range(i + 1, batch_size):
@@ -62,15 +62,12 @@ class BasicCL4CTR(nn.Module):
         x_emb = self.embedding(x)
 
         # 1. Compute feature alignment loss (L_ali) and feature uniformity loss (L_uni).
-        # This is a simplified computation based only on the embedding of each batch,
-        # which can accelerate the training process.
         cl_align_loss = self.compute_alignment_loss(x_emb)
         cl_uniform_loss = self.compute_uniformity_loss(x_emb)
         if alpha == 0.0:
             return (cl_align_loss + cl_uniform_loss) * beta
 
         # 2. Compute contrastive loss.
-
         x_emb1, x_emb2 = self.dp1(x_emb), self.dp2(x_emb)
         x_h1 = self.fi_cl(x_emb1).view(-1, self.input_dim)
         x_h2 = self.fi_cl(x_emb2).view(-1, self.input_dim)
@@ -116,6 +113,7 @@ class BasicCL4CTR(nn.Module):
         return loss
 
     def compute_alignment_loss(self, x_emb):
+        # print(x_emb.size())
         alignment_loss = torch.norm(x_emb[self.row].sub(x_emb[self.col]), dim=2).pow(2).mean()
         return alignment_loss
 

@@ -1,12 +1,13 @@
 #!/usr/bin/env python
 # -*- coding:utf-8 -*-
 
-from model.BasiclLayer import BasicCTR, BasicCL4CTR, FactorizationMachine
+from model.BasiclLayer import BasicCTR, BasicCL4CTR, FactorizationMachine, FeaturesLinear
 
 
 class FactorizationMachineModel(BasicCTR):
     def __init__(self, field_dims, embed_dim):
         super(FactorizationMachineModel, self).__init__(field_dims, embed_dim)
+        self.lr = FeaturesLinear(field_dims)
         self.fm = FactorizationMachine(reduce_sum=True)
 
     def forward(self, x):
@@ -23,6 +24,7 @@ class FM_CL4CTR(BasicCL4CTR):
     # Extends BasicCL4CTR, which integrate contrastive learning approach for CTR models.
     def __init__(self, field_dims, embed_dim, batch_size=1024, pratio=0.5, fi_type="att"):
         super(FM_CL4CTR, self).__init__(field_dims, embed_dim, batch_size, pratio=pratio, fi_type=fi_type)
+        self.lr = FeaturesLinear(field_dims)
         self.fm = FactorizationMachine(reduce_sum=True)
 
     def forward(self, x):
