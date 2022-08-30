@@ -17,7 +17,3 @@ def load_trained_embedding(from_model,to_model):
 def count_params(model):
     params = sum(param.numel() for param in model.parameters())
     return params
-
-
-if __name__ == '__main__':
-    print(sum(FIELD_NUMS))
