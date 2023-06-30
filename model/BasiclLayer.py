@@ -39,7 +39,7 @@ class BasicCL4CTR(nn.Module):
 
         # 2.2 FI_encoder. In most cases, we utilize three layer transformer layers.
         self.encoder_layer = nn.TransformerEncoderLayer(d_model=embed_dim, nhead=1, dim_feedforward=128,
-                                                        dropout=0.2)
+                                                        dropout=0.2, batch_first=True)
         self.fi_cl = nn.TransformerEncoder(self.encoder_layer, num_layers=3)
 
         # 2.3 Projection
