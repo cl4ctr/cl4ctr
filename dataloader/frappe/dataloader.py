@@ -74,7 +74,8 @@ def getdataloader_frappe(path="../data/", dataset="frappe", num_ng=4, batch_size
                                              pin_memory=True)
     return DataF.field_dims, trainLoader, validLoader, testLoader
 
-def getdataloader_ml(path="../.././data/", dataset="ml-tag",num_ng=4, batch_size=256):
+def getdataloader_ml(path="../.././data/", dataset="ml-tag", batch_size=256):
+    # we delete one parameter num_ng, as we do not utilize it.
     path_ml = path + 'preprocess-ml.p'
     if not os.path.exists(path_ml):
         DataF = LoadData(path=path, dataset=dataset)
