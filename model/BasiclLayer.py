@@ -69,8 +69,9 @@ class BasicCL4CTR(nn.Module):
 
         # 2. Compute contrastive loss.
         x_emb1, x_emb2 = self.dp1(x_emb), self.dp2(x_emb)
-        x_h1 = self.fi_cl(x_emb1).view(-1, self.input_dim)
-        x_h2 = self.fi_cl(x_emb2).view(-1, self.input_dim)
+        
+        x_h1 = self.fi_cl(x_emb1.transpose(0,1)).view(-1, self.input_dim)  # B,E
+        x_h2 = self.fi_cl(x_emb2.transpose(0,1)).view(-1, self.input_dim)  # B,E
 
         x_h1 = self.projector1(x_h1)
         x_h2 = self.projector2(x_h2)
@@ -100,8 +101,9 @@ class BasicCL4CTR(nn.Module):
 
         # 2. Compute contrastive loss (L_cl).
         x_emb1, x_emb2 = self.dp1(x_emb), self.dp2(x_emb)
-        x_h1 = self.fi_cl(x_emb1).view(-1, self.input_dim)
-        x_h2 = self.fi_cl(x_emb2).view(-1, self.input_dim)
+        
+        x_h1 = self.fi_cl(x_emb1.transpose(0,1)).view(-1, self.input_dim)  # B,E
+        x_h2 = self.fi_cl(x_emb2.transpose(0,1)).view(-1, self.input_dim)  # B,E
 
         x_h1 = self.projector1(x_h1)
         x_h2 = self.projector2(x_h2)
